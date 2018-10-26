@@ -1,16 +1,16 @@
 /* @flow */
 
 import config from '../config'
-import Dep from '../observer/dep'
 import Watcher from '../observer/watcher'
+import Dep, { pushTarget, popTarget } from '../observer/dep'
 import { isUpdatingChildComponent } from './lifecycle'
 
 import {
   set,
   del,
   observe,
-  observerState,
-  defineReactive
+  defineReactive,
+  toggleObserving
 } from '../observer/index'
 
 import {
@@ -69,7 +69,9 @@ function initProps (vm: Component, propsOptions: Object) {
   const keys = vm.$options._propKeys = []
   const isRoot = !vm.$parent
   // root instance props should be converted
-  observerState.shouldConvert = isRoot
+  if (!isRoot) {
+    toggleObserving(false)
+  }
   for (const key in propsOptions) {
     keys.push(key)
     const value = validateProp(key, propsOptions, propsData, vm)
@@ -84,7 +86,7 @@ function initProps (vm: Component, propsOptions: Object) {
         )
       }
       defineReactive(props, key, value, () => {
-        if (vm.$parent && !isUpdatingChildComponent) {
+        if (!isRoot && !isUpdatingChildComponent) {
           warn(
             `Avoid mutating a prop directly since the value will be ` +
             `overwritten whenever the parent component re-renders. ` +
@@ -104,7 +106,7 @@ function initProps (vm: Component, propsOptions: Object) {
       proxy(vm, `_props`, key)
     }
   }
-  observerState.shouldConvert = true
+  toggleObserving(true)
 }
 
 function initData (vm: Component) {
@@ -149,18 +151,23 @@ function initData (vm: Component) {
   observe(data, true /* asRootData */)
 }
 
-function getData (data: Function, vm: Component): any {
+export function getData (data: Function, vm: Component): any {
+  // #7573 disable dep collection when invoking data getters
+  pushTarget()
   try {
     return data.call(vm, vm)
   } catch (e) {
     handleError(e, vm, `data()`)
     return {}
+  } finally {
+    popTarget()
   }
 }
 
 const computedWatcherOptions = { lazy: true }
 
 function initComputed (vm: Component, computed: Object) {
+  // $flow-disable-line
   const watchers = vm._computedWatchers = Object.create(null)
   // computed properties are just getters during SSR
   const isSSR = isServerRendering()
@@ -291,7 +298,7 @@ function initWatch (vm: Component, watch: Object) {
 
 function createWatcher (
   vm: Component,
-  keyOrFn: string | Function,
+  expOrFn: string | Function,
   handler: any,
   options?: Object
 ) {
@@ -302,7 +309,7 @@ function createWatcher (
   if (typeof handler === 'string') {
     handler = vm[handler]
   }
-  return vm.$watch(keyOrFn, handler, options)
+  return vm.$watch(expOrFn, handler, options)
 }
 
 export function stateMixin (Vue: Class<Component>) {
@@ -314,7 +321,7 @@ export function stateMixin (Vue: Class<Component>) {
   const propsDef = {}
   propsDef.get = function () { return this._props }
   if (process.env.NODE_ENV !== 'production') {
-    dataDef.set = function (newData: Object) {
+    dataDef.set = function () {
       warn(
         'Avoid replacing instance root $data. ' +
         'Use nested data properties instead.',

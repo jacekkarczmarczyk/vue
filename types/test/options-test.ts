@@ -1,10 +1,22 @@
-import Vue from "../index";
-import { AsyncComponent, ComponentOptions, FunctionalComponentOptions } from "../index";
+import Vue, { VNode } from "../index";
+import { AsyncComponent, ComponentOptions, FunctionalComponentOptions, Component } from "../index";
 import { CreateElement } from "../vue";
 
-interface Component extends Vue {
+interface MyComponent extends Vue {
   a: number;
 }
+
+const option: ComponentOptions<MyComponent> = {
+  data() {
+    return {
+      a: 123
+    }
+  }
+}
+
+// contravariant generic should use never
+const anotherOption: ComponentOptions<never> = option
+const componentType: Component = option
 
 Vue.component('sub-component', {
   components: {
@@ -41,10 +53,10 @@ Vue.component('string-prop', {
 });
 
 class User {
-  private u: number
+  private u = 1
 }
 class Cat {
-  private u: number
+  private u = 1
 }
 
 Vue.component('union-prop', {
@@ -64,6 +76,18 @@ Vue.component('union-prop', {
     return {
       fixedSize: this.union,
     }
+  }
+});
+
+Vue.component('prop-with-primitive-default', {
+  props: {
+    id: {
+      type: String,
+      default: () => String(Math.round(Math.random() * 10000000))
+    }
+  },
+  created() {
+    this.id;
   }
 });
 
@@ -130,6 +154,10 @@ Vue.component('component', {
       props: {
         myProp: "bar"
       },
+      directives: [{
+        name: 'a',
+        value: 'foo'
+      }],
       domProps: {
         innerHTML: "baz"
       },
@@ -148,7 +176,8 @@ Vue.component('component', {
         fontSize: '14px'
       },
       key: 'myKey',
-      ref: 'myRef'
+      ref: 'myRef',
+      refInFor: true
     }, [
       createElement(),
       createElement("div", "message"),
@@ -187,7 +216,10 @@ Vue.component('component', {
   updated() {},
   activated() {},
   deactivated() {},
-  errorCaptured() {
+  errorCaptured(err, vm, info) {
+    err.message
+    vm.$emit('error')
+    info.toUpperCase()
     return true
   },
 
@@ -277,6 +309,19 @@ Vue.component('component-with-scoped-slot', {
   }
 })
 
+Vue.component('narrow-array-of-vnode-type', {
+  render (h): VNode {
+    const slot = this.$scopedSlots.default({})
+    if (typeof slot !== 'string') {
+      const first = slot[0]
+      if (!Array.isArray(first) && typeof first !== 'string') {
+        return first;
+      }
+    }
+    return h();
+  }
+})
+
 Vue.component('functional-component', {
   props: ['prop'],
   functional: true,
@@ -287,6 +332,7 @@ Vue.component('functional-component', {
     context.slots();
     context.data;
     context.parent;
+    context.listeners.click;
     return createElement("div", {}, context.children);
   }
 });
@@ -305,6 +351,20 @@ Vue.component('functional-component-object-inject', {
   }
 })
 
+Vue.component('functional-component-check-optional', {
+  functional: true
+})
+
+Vue.component('functional-component-multi-root', {
+  functional: true,
+  render(h) {
+    return [
+      h("tr", [h("td", "foo"), h("td", "bar")]),
+      h("tr", [h("td", "lorem"), h("td", "ipsum")])
+    ]
+  }
+})
+
 Vue.component("async-component", ((resolve, reject) => {
   setTimeout(() => {
     resolve(Vue.component("component"));
@@ -316,5 +376,25 @@ Vue.component("async-component", ((resolve, reject) => {
     });
   })
 }));
+
+Vue.component('functional-component-v-model', {
+  props: ['foo'],
+  functional: true,
+  model: {
+    prop: 'foo',
+    event: 'change'
+  },
+  render(createElement, context) {
+    return createElement("input", {
+      on: {
+        input: new Function()
+      },
+      domProps: {
+        value: context.props.foo
+      }
+    });
+  }
+});
+
 
 Vue.component('async-es-module-component', () => import('./es-module'))

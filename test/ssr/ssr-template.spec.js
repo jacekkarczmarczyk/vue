@@ -1,4 +1,3 @@
-import webpack from 'webpack'
 import Vue from '../../dist/vue.runtime.common.js'
 import { compileWithWebpack } from './compile-with-webpack'
 import { createRenderer } from '../../packages/vue-server-renderer'
@@ -12,13 +11,15 @@ function generateClientManifest (file, cb) {
   compileWithWebpack(file, {
     output: {
       path: '/',
+      publicPath: '/',
       filename: '[name].js'
     },
+    optimization: {
+      runtimeChunk: {
+        name: 'manifest'
+      }
+    },
     plugins: [
-      new webpack.optimize.CommonsChunkPlugin({
-        name: 'manifest',
-        minChunks: Infinity
-      }),
       new VueSSRClientPlugin()
     ]
   }, fs => {

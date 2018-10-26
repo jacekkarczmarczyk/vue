@@ -6,7 +6,12 @@ type RenderState = {
   type: 'Element';
   rendered: number;
   total: number;
+  children: Array<VNode>;
   endTag: string;
+} | {
+  type: 'Fragment';
+  rendered: number;
+  total: number;
   children: Array<VNode>;
 } | {
   type: 'Component';
@@ -26,7 +31,7 @@ export class RenderContext {
   write: (text: string, next: Function) => void;
   renderNode: (node: VNode, isRoot: boolean, context: RenderContext) => void;
   next: () => void;
-  done: () => void;
+  done: (err: ?Error) => void;
 
   modules: Array<(node: VNode) => ?string>;
   directives: Object;
@@ -65,15 +70,21 @@ export class RenderContext {
     if (isUndef(lastState)) {
       return this.done()
     }
+    /* eslint-disable no-case-declarations */
     switch (lastState.type) {
       case 'Element':
+      case 'Fragment':
         const { children, total } = lastState
         const rendered = lastState.rendered++
         if (rendered < total) {
           this.renderNode(children[rendered], false, this)
         } else {
           this.renderStates.pop()
-          this.write(lastState.endTag, this.next)
+          if (lastState.type === 'Element') {
+            this.write(lastState.endTag, this.next)
+          } else {
+            this.next()
+          }
         }
         break
       case 'Component':

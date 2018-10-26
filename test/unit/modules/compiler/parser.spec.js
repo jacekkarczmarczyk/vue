@@ -123,7 +123,7 @@ describe('parser', () => {
   it('not warn 3 root elements with v-if, v-else-if and v-else', () => {
     parse('<div v-if="1"></div><div v-else-if="2"></div><div v-else></div>', baseOptions)
     expect('Component template should contain exactly one root element')
-        .not.toHaveBeenWarned()
+      .not.toHaveBeenWarned()
   })
 
   it('not warn 2 root elements with v-if and v-else on separate lines', () => {
@@ -142,7 +142,7 @@ describe('parser', () => {
       <div v-else></div>
     `, baseOptions)
     expect('Component template should contain exactly one root element')
-        .not.toHaveBeenWarned()
+      .not.toHaveBeenWarned()
 
     parse(`
       <div v-if="1"></div>
@@ -152,7 +152,7 @@ describe('parser', () => {
       <div v-else></div>
     `, baseOptions)
     expect('Component template should contain exactly one root element')
-        .not.toHaveBeenWarned()
+      .not.toHaveBeenWarned()
   })
 
   it('generate correct ast for 2 root elements with v-if and v-else on separate lines', () => {
@@ -219,7 +219,7 @@ describe('parser', () => {
   it('warn 2 root elements with v-if and v-else-if with v-for on 2nd', () => {
     parse('<div v-if="1"></div><div v-else-if="2" v-for="i in [1]"></div>', baseOptions)
     expect('Cannot use v-for on stateful component root element because it renders multiple elements')
-        .toHaveBeenWarned()
+      .toHaveBeenWarned()
   })
 
   it('warn <template> as root element', () => {
@@ -248,6 +248,15 @@ describe('parser', () => {
     expect(ast.attrs[0].name).toBe('id')
     expect(ast.attrs[0].value).toBe('"message1"')
     expect(ast.children[0].children[0].text).toBe('{{msg}}')
+  })
+
+  it('v-pre directive should leave template in DOM', () => {
+    const ast = parse('<div v-pre id="message1"><template id="template1"><p>{{msg}}</p></template></div>', baseOptions)
+    expect(ast.pre).toBe(true)
+    expect(ast.attrs[0].name).toBe('id')
+    expect(ast.attrs[0].value).toBe('"message1"')
+    expect(ast.children[0].attrs[0].name).toBe('id')
+    expect(ast.children[0].attrs[0].value).toBe('"template1"')
   })
 
   it('v-for directive basic syntax', () => {
@@ -510,6 +519,11 @@ describe('parser', () => {
     expect(ast.props[0].value).toBe('msg')
   })
 
+  it('empty v-bind expression', () => {
+    parse('<div :empty-msg=""></div>', baseOptions)
+    expect('The value for a v-bind expression cannot be empty. Found in "v-bind:empty-msg"').toHaveBeenWarned()
+  })
+
   // #6887
   it('special case static attribute that must be props', () => {
     const ast = parse('<video muted></video>', baseOptions)
@@ -716,5 +730,11 @@ describe('parser', () => {
     expect(ast.children[1].type).toBe(3) // parse comment with ASTText
     expect(ast.children[1].isComment).toBe(true) // parse comment with ASTText
     expect(ast.children[1].text).toBe('comment here')
+  })
+
+  // #8103
+  it('should allow CRLFs in string interpolations', () => {
+    const ast = parse(`<p>{{\r\nmsg\r\n}}</p>`, baseOptions)
+    expect(ast.children[0].expression).toBe('_s(msg)')
   })
 })

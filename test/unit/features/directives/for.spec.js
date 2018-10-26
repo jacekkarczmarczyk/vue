@@ -330,7 +330,7 @@ describe('Directive v-for', () => {
     }).then(done)
 
     function assertMarkup () {
-      var markup = vm.list.map(function (item) {
+      const markup = vm.list.map(function (item) {
         return '<p>' + item.a + '</p><p>' + (item.a + 1) + '</p>'
       }).join('')
       expect(vm.$el.innerHTML).toBe(markup)
@@ -370,7 +370,7 @@ describe('Directive v-for', () => {
     }).then(done)
 
     function assertMarkup () {
-      var markup = vm.list.map(function (item) {
+      const markup = vm.list.map(function (item) {
         return `<p>${item.a}<span>${item.a}</span></p>`
       }).join('')
       expect(vm.$el.innerHTML).toBe(markup)
@@ -462,6 +462,26 @@ describe('Directive v-for', () => {
     waitForUpdate(() => {
       expect(vm.$el.textContent).toMatch('f.o.o.b.a.r.')
     }).then(done)
+  })
+
+  // #7792
+  it('should work with multiline expressions', () => {
+    const vm = new Vue({
+      data: {
+        a: [1],
+        b: [2]
+      },
+      template: `
+        <div>
+          <span v-for="n in (
+            a.concat(
+              b
+            )
+          )">{{ n }}</span>
+        </div>
+      `
+    }).$mount()
+    expect(vm.$el.textContent).toBe('12')
   })
 
   const supportsDestructuring = (() => {
