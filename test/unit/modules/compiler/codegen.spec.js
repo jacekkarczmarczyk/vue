@@ -208,6 +208,17 @@ describe('codegen', () => {
     )
   })
 
+  it('generate scoped slot with multiline v-if', () => {
+    assertCodegen(
+      '<foo><template v-if="\nshow\n" slot-scope="bar">{{ bar }}</template></foo>',
+      `with(this){return _c('foo',{scopedSlots:_u([{key:"default",fn:function(bar){return (\nshow\n)?[_v(_s(bar))]:undefined}}])})}`
+    )
+    assertCodegen(
+      '<foo><div v-if="\nshow\n" slot="foo" slot-scope="bar">{{ bar }}</div></foo>',
+      `with(this){return _c(\'foo\',{scopedSlots:_u([{key:"foo",fn:function(bar){return (\nshow\n)?_c(\'div\',{},[_v(_s(bar))]):_e()}}])})}`
+    )
+  })
+
   it('generate class binding', () => {
     // static
     assertCodegen(
@@ -618,6 +629,14 @@ describe('codegen', () => {
       '<p v-if="show">hello world</p>',
       `with(this){return (show)?_c('p',[_v("hello world")]):_e()}`,
       { isReservedTag }
+    )
+  })
+
+  // #9142
+  it('should compile single v-for component inside template', () => {
+    assertCodegen(
+      `<div><template v-if="ok"><foo v-for="i in 1" :key="i"></foo></template></div>`,
+      `with(this){return _c('div',[(ok)?_l((1),function(i){return _c('foo',{key:i})}):_e()],2)}`
     )
   })
 })
